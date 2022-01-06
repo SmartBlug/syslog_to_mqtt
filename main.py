@@ -6,9 +6,9 @@ from syslogmp import parse
 
 import os
 
-version = '1.0.0'
+version = '1.0.1'
 
-mqttbroker = os.environ['MQTT_BROAKER']
+mqttbroker = os.environ['MQTT_BROKER']
 mqttport = int(os.environ['MQTT_PORT'])
 mqtt_client_id = os.environ['MQTT_CLIENTID']
 mqttusername = os.environ['MQTT_USERNAME']
@@ -76,7 +76,7 @@ while 1:
         else:
             try:
                 message = parse(data)
-                print(message, flush=True)
+                #print(message, flush=True)
 
                 mqttclient.publish(mqtt_prefix+'/'+message.hostname+'/'+str(message.severity).split('.')[1]+'/'+str(message.facility).split('.')[1],message.timestamp.strftime("%m/%d/%Y %H:%M:%S")+' - '+str(message.message.decode('utf-8')).rstrip("\n"))
             except:
