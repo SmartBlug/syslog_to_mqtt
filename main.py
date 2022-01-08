@@ -8,7 +8,7 @@ import os
 import argparse
 import uuid
 
-version = '1.0.2'
+version = '1.0.3'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', "--mqtt_broker", help="mqtt Broker IP.")
@@ -21,15 +21,10 @@ parser.add_argument('-l', "--listening_port", help="listening port.", type=int, 
 parser.add_argument('-v', "--verbose", help="verbose mode.",action="store_true")
 args = parser.parse_args()
 
-print(args)
-
-#quit()
-
 if not (args.mqtt_broker):
     print("retrieving parameters from env...")
     args.mqtt_broker = os.environ['MQTT_BROKER']
     args.mqtt_port = int(os.environ['MQTT_PORT'])
-    #args.mqtt_id = os.environ['MQTT_CLIENTID']
     args.mqtt_username = os.environ['MQTT_USERNAME']
     args.mqtt_password = os.environ['MQTT_PASSWORD']
     args.mqtt_topic = os.environ['MQTT_PREFIX']
@@ -71,9 +66,7 @@ mqttclient.connect(args.mqtt_broker,args.mqtt_port)
 
 #Syslog Parameters
 server = "0.0.0.0"  # IP of server listener. 0.0.0.0 for any
-#port = 514
 buf = 8192*4
-#addr = (server,port)
 addr = (server,args.listening_port)
 
 #Open Syslog Socket
@@ -95,7 +88,6 @@ while 1:
         data,addr = TCPSock.recvfrom(buf)
         if args.verbose:
             print("new data:",data)
-        #data,addr = TCPSock.recvfrom(1024)
         if not data:
             print ("No response from systems!", flush=True)
             break
