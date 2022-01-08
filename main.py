@@ -2,21 +2,65 @@ from socket import *
 import paho.mqtt.client as mqtt
 from datetime import datetime
 
-from syslogmp import parse
-
 import os
 import argparse
 import uuid
 
-version = '1.0.3'
+from dataclasses import dataclass
 
+version = '1.1.0'
+
+Facility = ['kernel','user','mail','system_daemons','security4','internal','line_printer','network_news','uucp','clock9','security10','ftp','ntp','log_audit','log_alert','clock15','local0','local1','local2','local3','local4','local5','local6','local7']
+Severity = ['emergency','alert','critical','error','warning','notice','info','debug']
+
+@dataclass(frozen=True)
+class Message:
+    facility: str
+    facility_id: int
+    severity: str
+    severity_id: int
+    timestamp: datetime
+    hostname: str
+    message: str
+
+def pop(data,match=' ',nb=1):
+    ptr=0
+    while nb:
+        i=data[ptr:].index(match)
+        ptr=ptr+i+1
+        nb-=1
+    return (data[0:ptr-1],data[ptr:])
+
+def syslog_3164(data) -> Message:
+    data=data.decode("utf-8")
+    #print('analyse',data)
+    PRI,data = pop(data,'>')
+    facility_id, severity_id = divmod(int(PRI[1:]), 8)
+    # replace 0 in date if not present for datetime conversion
+    if data[4]==' ':
+        data=data[:4]+'0'+data[5:]
+    logdate,data = pop(data,' ',3)
+    host,message = pop(data)
+    log_datetime = datetime.strptime(logdate,'%b %d %H:%M:%S')
+    log_datetime = log_datetime.replace(year=datetime.now().year)
+
+    return Message(
+            facility=Facility[facility_id],
+            facility_id=facility_id,
+            severity=Severity[severity_id],
+            severity_id=severity_id,
+            timestamp=log_datetime,
+            hostname=host,
+            message=message.rstrip('\x00').rstrip("\n"),
+        )
+   
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', "--mqtt_broker", help="mqtt Broker IP.")
 parser.add_argument('-m', "--mqtt_port", help="mqtt port.", type=int, default=1883)
 parser.add_argument('-i', "--mqtt_id", help="mqtt id.", default="syslog_to_mqtt_"+hex(uuid.getnode()))
 parser.add_argument('-u', "--mqtt_username", help="mqtt username.")
 parser.add_argument('-p', "--mqtt_password", help="mqtt password.")
-parser.add_argument('-t', "--mqtt_topic", help="mqtt prefix topic.", default="syslog")
+parser.add_argument('-t', "--mqtt_topic", help="mqtt prefix topic.", default="test")
 parser.add_argument('-l', "--listening_port", help="listening port.", type=int, default=514)
 parser.add_argument('-v', "--verbose", help="verbose mode.",action="store_true")
 args = parser.parse_args()
@@ -93,13 +137,15 @@ while 1:
             break
         else:
             try:
-                message = parse(data)
+                message = syslog_3164(data)
                 if args.verbose:
                     print(message, flush=True)
-
-                mqttclient.publish(args.mqtt_topic+'/'+message.hostname+'/'+str(message.severity).split('.')[1]+'/'+str(message.facility).split('.')[1],message.timestamp.strftime("%m/%d/%Y %H:%M:%S")+' - '+str(message.message.decode('utf-8')).rstrip('\x00').rstrip("\n"))
             except:
                 print("Error while parsing message",data, flush=True)
+            try:
+                mqttclient.publish(args.mqtt_topic+'/'+message.hostname+'/'+message.severity+'/'+message.facility,message.timestamp.strftime("%m/%d/%Y %H:%M:%S")+' - '+message.message)
+            except:
+                print("Error while sending to",args.mqtt_broker, flush=True)
     except:
         #print("timeout")
         pass
