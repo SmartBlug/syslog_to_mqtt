@@ -1,4 +1,6 @@
+import socket as sock
 from socket import *
+
 import paho.mqtt.client as mqtt
 from datetime import datetime
 
@@ -8,7 +10,7 @@ import uuid
 
 from dataclasses import dataclass
 
-version = '1.1.0'
+version = '1.1.1'
 
 Facility = ['kernel','user','mail','system_daemons','security4','internal','line_printer','network_news','uucp','clock9','security10','ftp','ntp','log_audit','log_alert','clock15','local0','local1','local2','local3','local4','local5','local6','local7']
 Severity = ['emergency','alert','critical','error','warning','notice','info','debug']
@@ -53,7 +55,7 @@ def syslog_3164(data) -> Message:
             hostname=host,
             message=message.rstrip('\x00').rstrip("\n"),
         )
-   
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', "--mqtt_broker", help="mqtt Broker IP.")
 parser.add_argument('-m', "--mqtt_port", help="mqtt port.", type=int, default=1883)
@@ -146,8 +148,7 @@ while 1:
                 mqttclient.publish(args.mqtt_topic+'/'+message.hostname+'/'+message.severity+'/'+message.facility,message.timestamp.strftime("%m/%d/%Y %H:%M:%S")+' - '+message.message)
             except:
                 print("Error while sending to",args.mqtt_broker, flush=True)
-    except:
-        #print("timeout")
+    except (TimeoutError, sock.timeout):
         pass
 
 TCPSock.close()
