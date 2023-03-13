@@ -10,7 +10,7 @@ import uuid
 
 from dataclasses import dataclass
 
-version = '1.1.1'
+version = '1.2.0'
 
 Facility = ['kernel','user','mail','system_daemons','security4','internal','line_printer','network_news','uucp','clock9','security10','ftp','ntp','log_audit','log_alert','clock15','local0','local1','local2','local3','local4','local5','local6','local7']
 Severity = ['emergency','alert','critical','error','warning','notice','info','debug']
@@ -63,8 +63,9 @@ parser.add_argument('-i', "--mqtt_id", help="mqtt id.", default="syslog_to_mqtt_
 parser.add_argument('-u', "--mqtt_username", help="mqtt username.")
 parser.add_argument('-p', "--mqtt_password", help="mqtt password.")
 parser.add_argument('-t', "--mqtt_topic", help="mqtt prefix topic.", default="test")
+parser.add_argument('-s', "--mqtt_tls", help="mqtt use tls.", action="store_true")
 parser.add_argument('-l', "--listening_port", help="listening port.", type=int, default=514)
-parser.add_argument('-v', "--verbose", help="verbose mode.",action="store_true")
+parser.add_argument('-v', "--verbose", help="verbose mode.", action="store_true")
 args = parser.parse_args()
 
 if not (args.mqtt_broker):
@@ -105,6 +106,9 @@ print('Connecting to',args.mqtt_broker)
 mqtt.Client.connected_flag = False
 mqttclient = mqtt.Client(args.mqtt_id)
 mqttclient.username_pw_set(username=args.mqtt_username, password=args.mqtt_password)
+if args.mqtt_tls:
+    import certifi
+    mqttclient.tls_set(certifi.where())
 mqttclient.on_connect = on_connect
 mqttclient.on_disconnect = on_disconnect
 mqttclient.loop_start()
